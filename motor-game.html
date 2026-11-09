@@ -87,6 +87,7 @@ button{font-family:inherit;cursor:pointer;border:none}
 .hname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hname small{display:block;font-size:13px;color:var(--ink2)}
 .hscore{font-family:'Black Han Sans',sans-serif;font-size:22px;color:var(--purple)}
+.maker{text-align:center;margin:22px 0 8px;font-size:17px;color:var(--ink2)}
 .empty{text-align:center;padding:30px;color:var(--ink2);font-size:18px}
 
 /* ---------- 게임 화면 ---------- */
@@ -213,6 +214,7 @@ body.fever .fever-badge{display:block}
       <div class="note" id="hofNote"></div>
       <ul class="hof-list" id="hofList"></ul>
     </div>
+    <div class="maker">제작자 : 삼각산중학교</div>
   </section>
 
   <!-- ================= 게임 화면 ================= -->
@@ -782,7 +784,20 @@ function titleFor(s){
 }
 
 /* ===================== 명예의 전당 ===================== */
+const HOF_SIZE = 10;   // 명예의 전당에 보이는 인원
 function cleanName(s){ return String(s||'').replace(/[<>\n\r\t]/g,'').replace(/^[=+\-@\s]+/,'').trim().slice(0,12); }
+// 실명처럼 보이는 이름(한글 2~4글자)은 가운데를 * 로 가림: 김민준 → 김*준, 김준 → 김*, 남궁민준 → 남**준
+function maskName(n){
+  n = String(n||'');
+  if(/^[가-힣]{2,4}$/.test(n)) return n.length===2 ? n[0]+'*' : n[0] + '*'.repeat(n.length-2) + n[n.length-1];
+  return n;
+}
+// 닉네임당 최고 점수 1개만 남기기
+function bestPerName(list){
+  const best = {};
+  list.forEach(r=>{ const k=String(r.name); if(!best[k] || Number(r.score)>Number(best[k].score)) best[k]=r; });
+  return Object.values(best).sort((a,b)=>Number(b.score)-Number(a.score));
+}
 async function submitScore(){
   if(!lastResult) return;
   const name = cleanName($('nameInput').value);
@@ -791,11 +806,14 @@ async function submitScore(){
   $('btnReg').disabled=true;
   const entry = {name, score:lastResult.score, combo:lastResult.combo, quiz:lastResult.quiz, date:new Date().toISOString()};
   myEntry = entry;
+  const rankMsg = (rank, best)=> '🎉 등록 완료! ' + (best>entry.score
+      ? '내 최고 기록 <b>'+best.toLocaleString()+'점</b>으로 현재 <b style="color:#ff6fa8">'+rank+'위</b>예요!'
+      : '현재 <b style="color:#ff6fa8">'+rank+'위</b>예요!');
   if(!SHEET_API_URL){
     const list = store.get('motor_local_hof', []); list.push(entry);
-    list.sort((a,b)=>b.score-a.score); store.set('motor_local_hof', list.slice(0,100));
-    const rank = list.indexOf(entry)+1;
-    $('regMsg').innerHTML = '✅ 등록 완료! <b>'+rank+'위</b> (이 컴퓨터에만 저장됨)';
+    list.sort((a,b)=>b.score-a.score); store.set('motor_local_hof', list.slice(0,200));
+    const bests = bestPerName(list); const mine = bests.find(r=>r.name===name);
+    $('regMsg').innerHTML = rankMsg(bests.indexOf(mine)+1, mine.score) + ' (이 컴퓨터에만 저장됨)';
     return;
   }
   $('regMsg').textContent='⏳ 명예의 전당에 등록하는 중...';
@@ -803,7 +821,7 @@ async function submitScore(){
     const res = await fetch(SHEET_API_URL, {method:'POST', body:JSON.stringify(entry)});
     const data = await res.json();
     if(!data.ok) throw new Error(data.error||'fail');
-    $('regMsg').innerHTML = '🎉 등록 완료! 현재 <b style="color:#ff6fa8">'+data.rank+'위</b>예요!';
+    $('regMsg').innerHTML = rankMsg(data.rank, Number(data.best)||entry.score);
   }catch(e){
     $('btnReg').disabled=false;
     $('regMsg').innerHTML='<span style="color:#ff4d5e">등록 실패 😢 인터넷 연결을 확인하고 다시 눌러 주세요.</span>';
@@ -819,23 +837,24 @@ async function loadHof(){
   } else {
     $('hofNote').textContent='';
     try{
-      const res = await fetch(SHEET_API_URL+'?limit=30&t='+Date.now());
+      const res = await fetch(SHEET_API_URL+'?limit='+HOF_SIZE+'&t='+Date.now());
       const data = await res.json();
       list = data.rows||[];
     }catch(e){
       ul.innerHTML='<li class="empty" style="display:block">불러오기 실패 😢 잠시 후 새로고침을 눌러 주세요.</li>'; return;
     }
   }
-  list = list.slice().sort((a,b)=>b.score-a.score).slice(0,30);
+  list = bestPerName(list).slice(0,HOF_SIZE);
   if(list.length===0){ ul.innerHTML='<li class="empty" style="display:block">아직 기록이 없어요. 첫 번째 주인공이 되어 보세요! 🚀</li>'; return; }
   const medal=['🥇','🥈','🥉'];
   ul.innerHTML = list.map((r,i)=>{
-    const me = myEntry && r.name===myEntry.name && Number(r.score)===myEntry.score;
+    const shown = maskName(r.name);
+    const me = myEntry && shown===maskName(myEntry.name);
     const d = r.date ? new Date(r.date) : null;
     const ds = d && !isNaN(d) ? (d.getMonth()+1)+'/'+d.getDate() : '';
     return `<li class="${i<3?'top'+(i+1):''} ${me?'me':''}">
       <div class="rank">${i<3?medal[i]:(i+1)}</div>
-      <div class="hname">${esc(r.name)}<small>최대 콤보 ${Number(r.combo)||0} · 퀴즈 ${Number(r.quiz)||0}개 ${ds?'· '+ds:''}</small></div>
+      <div class="hname">${esc(shown)}<small>최대 콤보 ${Number(r.combo)||0} · 퀴즈 ${Number(r.quiz)||0}개 ${ds?'· '+ds:''}</small></div>
       <div class="hscore">${(Number(r.score)||0).toLocaleString()}</div></li>`;
   }).join('');
 }
