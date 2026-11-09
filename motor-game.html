@@ -199,7 +199,7 @@ body.fever .fever-badge{display:block}
       <div class="howto">
         <div class="how"><b>① 코일이 돌아요</b>자석 사이에서 코일을 감은 회전자가 빙글빙글 돌아요. <span class="em">반 바퀴</span>마다 전류 방향을 바꿔야 계속 돌 수 있어요!</div>
         <div class="how"><b>② 타이밍에 누르기</b>회전자가 자석과 나란한 <span class="em">노란 구역(왼쪽·오른쪽)</span>에 올 때 <span class="key">Enter</span> <span class="key">Space</span> 또는 화면을 터치!</div>
-        <div class="how"><b>③ 퀴즈 찬스 ⚡</b>성공 6번마다 빈칸 퀴즈! 정답을 직접 입력해서 맞히면 <span class="em">FEVER TIME</span> 10초 동안 점수 3배!</div>
+        <div class="how"><b>③ 퀴즈 찬스 ⚡</b>성공 6번마다 빈칸 퀴즈 2문제! 1개 맞히면 <span class="em">FEVER 2초</span>, 2개 다 맞히면 <span class="em">FEVER 5초</span> 동안 점수 3배!</div>
         <div class="how"><b>④ 조심!</b>타이밍을 놓치면 ❤️가 줄어요. 하트 3개가 모두 없어지면 게임 끝!</div>
       </div>
       <button id="btnStart" class="btn-big">▶ 게임 시작!</button>
@@ -265,8 +265,8 @@ body.fever .fever-badge{display:block}
 <!-- ================= 퀴즈 모달 ================= -->
 <div class="modal" id="quiz">
   <div class="qcard">
-    <div class="qtop"><span class="qtag">⚡ 보너스 퀴즈</span><span class="qsec" id="qSec"></span></div>
-    <div class="qtitle">맞히면 FEVER TIME! 🔥</div>
+    <div class="qtop"><span class="qtag" id="qTag">⚡ 보너스 퀴즈</span><span class="qsec" id="qSec"></span></div>
+    <div class="qtitle">1개 맞히면 FEVER 2초, 2개 다 맞히면 5초! 🔥</div>
     <div class="qtext" id="qText"></div>
     <div class="qtimer"><i id="qTimer"></i></div>
     <div class="qans">
@@ -347,7 +347,8 @@ const CFG = {
   perfect:0.045, great:0.09, goodMax:0.15,  // 시작 판정 범위(초)
   perfectMin:0.016, greatMin:0.035, goodMin:0.055, // 점수가 올라가면 여기까지 좁아짐
   tightenEvery:5000,                         // 이 점수마다 판정이 한 단계씩 엄격해짐
-  quizEvery:6, quizTime:20, feverTime:10, feverMult:3,
+  quizEvery:6, quizTime:20, quizPerRound:2,
+  feverOne:2, feverBoth:5, feverMult:3,      // 2문제 중 1개 정답: 2초, 2개 정답: 5초
 };
 // 점수가 오를수록 PERFECT / GREAT 범위가 줄어듦
 function tier(){ return Math.floor(G.score / CFG.tightenEvery); }
@@ -519,17 +520,24 @@ function pickQuiz(){
   recent.push(idx); store.set('motor_recent_q', recent.slice(-AVOID));
   return QUIZ[idx];
 }
+// 퀴즈는 한 번에 2문제: 1개 맞히면 FEVER 2초, 2개 다 맞히면 FEVER 5초
+let qSession = null;
 function openQuiz(){
   G.state='quiz'; SFX.quiz();
+  qSession = {n:0, right:0, total:CFG.quizPerRound};
+  $('quiz').classList.add('on');
+  showQuizQuestion();
+}
+function showQuizQuestion(){
   const item = pickQuiz();
   qState = {item, answer:item.a[0], done:false};
   G.quizAsked++;
+  $('qTag').textContent = '⚡ 보너스 퀴즈 '+(qSession.n+1)+' / '+qSession.total;
   $('qSec').textContent = item.s;
   $('qText').innerHTML = esc(item.q).replace('___','<span class="blank">?</span>');
   const inp = $('qInput'); inp.value=''; inp.disabled=false; inp.classList.remove('right','wrong');
   $('qSubmit').disabled=false;
   $('qResult').textContent='';
-  $('quiz').classList.add('on');
   setTimeout(()=>inp.focus(), 50);
   const t0=performance.now();
   clearInterval(qTimerId);
@@ -557,24 +565,33 @@ function answerQuiz(v){
   const inp=$('qInput'); inp.disabled=true; $('qSubmit').disabled=true; inp.blur();
   inp.classList.add(ok?'right':'wrong');
   const full = qState.item.q.replace('___', '「'+qState.answer+'」');
-  if(ok){
-    G.quizRight++; G.score += 500; SFX.right();
-    $('qResult').innerHTML = '🎉 정답! +500점 & <b style="color:#ff6fa8">FEVER TIME!</b>';
-  } else {
-    SFX.wrong();
-    $('qResult').innerHTML = (v===null?'⏰ 시간 초과! ':'😢 아쉬워요! ') + '정답은 <b style="color:#3ddc97">'+esc(qState.answer)+'</b>' + (full?'<div style="font-size:16px;color:#5b6b86;margin-top:4px">'+esc(full)+'</div>':'');
+  qSession.n++;
+  if(ok){ qSession.right++; G.quizRight++; G.score += 500; }
+  const last = qSession.n >= qSession.total;
+  let msg = ok ? '🎉 정답! +500점'
+               : (v===null?'⏰ 시간 초과! ':'😢 아쉬워요! ') + '정답은 <b style="color:#3ddc97">'+esc(qState.answer)+'</b>'
+                 + '<div style="font-size:16px;color:#5b6b86;margin-top:4px">'+esc(full)+'</div>';
+  let fever = 0;
+  if(last){
+    fever = qSession.right>=2 ? CFG.feverBoth : qSession.right===1 ? CFG.feverOne : 0;
+    msg += '<div style="margin-top:6px">' + (fever
+      ? qSession.right+'개 정답! <b style="color:#ff6fa8">FEVER '+fever+'초!</b> 🔥'
+      : '이번엔 FEVER 없음… 다음 기회에! 💪') + '</div>';
   }
+  if(ok) SFX.right(); else SFX.wrong();
+  $('qResult').innerHTML = msg;
   setTimeout(()=>{
+    if(!last){ showQuizQuestion(); return; }
     $('quiz').classList.remove('on');
-    resumeAfterQuiz(ok);
-  }, ok?1300:2600);
+    resumeAfterQuiz(fever);
+  }, ok ? (last?1500:1000) : 2600);
 }
-function resumeAfterQuiz(fever){
-  // 코일을 다음 스위칭 지점 120° 앞으로 맞춰 다시 시작
+function resumeAfterQuiz(feverSec){
+  // 회전자를 다음 스위칭 지점 120° 앞으로 맞춰 다시 시작
   G.theta = sw(G.k) - 120;
   G.cur = Math.sin(rotorAlpha()*Math.PI/180)>=0 ? 1 : -1;
   G.speedMul = 1;
-  if(fever){ G.feverLeft = CFG.feverTime; document.body.classList.add('fever'); addPop('🔥 FEVER ×3 🔥','#ff6fa8'); }
+  if(feverSec>0){ G.feverLeft = feverSec; G.feverTotal = feverSec; document.body.classList.add('fever'); addPop('🔥 FEVER ×3 ('+feverSec+'초) 🔥','#ff6fa8'); }
   G.state='count'; G.countT=1.5; G.lastCount=4;
   $('count').textContent='READY'; $('count').classList.add('on');
   updateHud(); lastT = performance.now();
@@ -591,7 +608,7 @@ function updateHud(){
 function updateBars(){
   if(G.feverLeft>0){
     $('quizBar').style.width='100%'; $('quizTxt').textContent='퀴즈 대기 중 🔥';
-    $('fevBar').style.width = (G.feverLeft/CFG.feverTime*100)+'%';
+    $('fevBar').style.width = (G.feverLeft/(G.feverTotal||CFG.feverBoth)*100)+'%';
     $('fevTxt').textContent = 'FEVER '+G.feverLeft.toFixed(1)+'초';
   } else {
     $('quizBar').style.width = (G.sinceQuiz/CFG.quizEvery*100)+'%';
