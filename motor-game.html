@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빙글빙글 전동기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   ★ 설정: 구글 Apps Script 웹 앱 URL을 아래 script 태그의 SHEET_API_URL에 넣으세요.
+   ===================================================================== */
+:root{
+  --sky:#e8f6ff; --sky2:#fff6d9;
+  --ink:#24324a; --ink2:#5b6b86;
+  --yellow:#ffd23f; --pink:#ff6fa8; --mint:#3ddc97; --blue:#3a86ff; --red:#ff4d5e; --purple:#8b5cf6;
+  --card:#ffffff; --line:#d7e6f5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:'Jua',sans-serif; color:var(--ink);
+  background:var(--sky);
+  min-height:100vh; -webkit-tap-highlight-color:transparent;
+  overflow-x:hidden;
+}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.screen{display:none}
+.screen.on{display:block}
+h1,.title{font-family:'Black Han Sans',sans-serif;font-weight:400}
+button{font-family:inherit;cursor:pointer;border:none}
+
+/* ---------- 시작 화면 ---------- */
+.logo{text-align:center;margin:18px 0 6px}
+.logo .big{
+  font-family:'Black Han Sans',sans-serif;font-size:clamp(40px,9vw,76px);line-height:1.05;
+  color:#fff;-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;
+  text-shadow:0 6px 0 var(--ink);
+  letter-spacing:1px;
+}
+.logo .big span{color:var(--yellow)}
+.logo .sub{font-size:clamp(17px,3.6vw,22px);color:var(--ink2);margin-top:12px}
+.spin{display:inline-block;animation:spin 2.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tabs{display:flex;gap:12px;justify-content:center;margin:22px 0 16px}
+.tab{
+  flex:1;max-width:260px;padding:16px 10px;border-radius:20px;font-size:clamp(18px,4vw,24px);
+  background:#fff;color:var(--ink);border:3px solid var(--ink);box-shadow:0 5px 0 var(--ink);
+  transition:transform .08s;
+}
+.tab:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.tab.on[data-tab="play"]{background:var(--yellow)}
+.tab.on[data-tab="hof"]{background:var(--pink);color:#fff}
+.panel{display:none;background:var(--card);border:3px solid var(--ink);border-radius:24px;padding:22px;box-shadow:0 6px 0 var(--ink)}
+.panel.on{display:block}
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.how{background:var(--sky);border-radius:16px;padding:14px;font-size:17px;line-height:1.5}
+.how b{display:block;font-size:20px;margin-bottom:4px}
+.how .em{color:var(--blue)}
+.key{display:inline-block;background:#fff;border:2px solid var(--ink);border-bottom-width:4px;border-radius:8px;padding:0 8px;font-size:15px}
+.btn-big{
+  display:block;width:100%;padding:18px;border-radius:20px;font-size:clamp(22px,5vw,30px);
+  background:var(--mint);color:#fff;-webkit-text-stroke:1px var(--ink);
+  border:3px solid var(--ink);box-shadow:0 6px 0 var(--ink);
+}
+.btn-big:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+.btn{padding:12px 18px;border-radius:14px;font-size:18px;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);background:#fff;color:var(--ink)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn.y{background:var(--yellow)} .btn.p{background:var(--pink);color:#fff} .btn.b{background:var(--blue);color:#fff} .btn.g{background:var(--mint);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* ---------- 명예의 전당 ---------- */
+.hof-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.hof-head h2{margin:0;font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:28px}
+.note{font-size:14px;color:var(--ink2)}
+.hof-list{list-style:none;margin:0;padding:0}
+.hof-list li{
+  display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:14px;margin-bottom:8px;background:var(--sky);font-size:19px;
+}
+.hof-list li.top1{background:#fff2b3;border:2px solid #f2c200}
+.hof-list li.top2{background:#eef1f6;border:2px solid #b8c2d1}
+.hof-list li.top3{background:#ffe6d1;border:2px solid #e9a26b}
+.hof-list li.me{outline:3px dashed var(--pink)}
+.rank{font-family:'Black Han Sans',sans-serif;font-size:22px;text-align:center}
+.hname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hname small{display:block;font-size:13px;color:var(--ink2)}
+.hscore{font-family:'Black Han Sans',sans-serif;font-size:22px;color:var(--purple)}
+.empty{text-align:center;padding:30px;color:var(--ink2);font-size:18px}
+
+/* ---------- 게임 화면 ---------- */
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.hbox{background:#fff;border:3px solid var(--ink);border-radius:14px;padding:6px 8px;text-align:center}
+.hbox .l{font-size:13px;color:var(--ink2)}
+.hbox .v{font-family:'Black Han Sans',sans-serif;font-size:clamp(18px,4.2vw,26px);line-height:1.1}
+#hLives{color:var(--red);letter-spacing:2px}
+.bars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.bar{background:#fff;border:3px solid var(--ink);border-radius:999px;height:26px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--blue);transition:width .2s}
+.bar.quiz i{background:linear-gradient(90deg,var(--yellow),var(--pink))}
+.bar.fev i{background:linear-gradient(90deg,#ff6fa8,#ffd23f,#3ddc97,#3a86ff,#8b5cf6);transition:none}
+.bar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;z-index:1}
+.stage{position:relative;background:#fff;border:3px solid var(--ink);border-radius:24px;overflow:hidden;box-shadow:0 6px 0 var(--ink)}
+canvas{display:block;width:100%;height:auto;touch-action:manipulation}
+.shake{animation:shake .3s}
+@keyframes shake{20%{transform:translate(-8px,2px)}40%{transform:translate(7px,-3px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,0)}}
+.fever-badge{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);display:none;
+  font-family:'Black Han Sans',sans-serif;font-size:34px;color:#fff;-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;
+  animation:pulse .5s ease-in-out infinite alternate;pointer-events:none;white-space:nowrap;
+}
+body.fever .fever-badge{display:block}
+@keyframes pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.12)}}
+.switch-btn{
+  margin-top:12px;width:100%;padding:18px;border-radius:20px;font-size:clamp(22px,5vw,30px);
+  background:var(--yellow);color:var(--ink);border:3px solid var(--ink);box-shadow:0 6px 0 var(--ink);user-select:none;
+}
+.switch-btn:active,.switch-btn.press{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+.tip{text-align:center;color:var(--ink2);margin-top:8px;font-size:15px}
+.count{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  font-family:'Black Han Sans',sans-serif;font-size:110px;color:var(--yellow);-webkit-text-stroke:4px var(--ink);paint-order:stroke fill;
+  background:rgba(255,255,255,.35);pointer-events:none
+}
+.count.on{display:flex}
+
+/* ---------- 퀴즈 ---------- */
+.modal{position:fixed;inset:0;background:rgba(36,50,74,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.on{display:flex}
+.qcard{
+  width:100%;max-width:640px;background:#fff;border:4px solid var(--ink);border-radius:26px;padding:20px;
+  box-shadow:0 8px 0 var(--ink);animation:pop .3s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.qtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.qtag{background:var(--pink);color:#fff;padding:4px 12px;border-radius:999px;font-size:16px}
+.qsec{font-size:14px;color:var(--ink2)}
+.qtitle{font-family:'Black Han Sans',sans-serif;font-size:clamp(22px,5vw,30px);text-align:center;margin:8px 0 4px;color:var(--purple)}
+.qtext{font-size:clamp(19px,4.2vw,24px);line-height:1.55;background:var(--sky);border-radius:16px;padding:16px;margin:10px 0 14px;word-break:keep-all}
+.blank{display:inline-block;min-width:80px;text-align:center;border-bottom:4px solid var(--pink);color:var(--pink);margin:0 4px}
+.qtimer{height:12px;border-radius:999px;background:#eee;overflow:hidden;margin-bottom:14px;border:2px solid var(--ink)}
+.qtimer i{display:block;height:100%;width:100%;background:var(--mint)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{
+  padding:14px 10px;border-radius:16px;font-size:clamp(18px,4vw,22px);background:#fff;color:var(--ink);
+  border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);text-align:left;display:flex;gap:8px;align-items:center;word-break:keep-all
+}
+.opt .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px}
+.opt.ox{justify-content:center;font-size:44px;padding:8px}
+.opt.ox .n{display:none}
+.opt.right{background:var(--mint);color:#fff}
+.opt.wrong{background:var(--red);color:#fff}
+.opt:disabled{cursor:default}
+.qans{display:flex;gap:8px}
+.qans input{flex:1;min-width:0;font-family:inherit;font-size:24px;padding:12px 16px;border:3px solid var(--ink);border-radius:16px;outline:none;text-align:center}
+.qans input:focus{border-color:var(--blue)}
+.qans input.right{background:var(--mint);color:#fff}
+.qans input.wrong{background:var(--red);color:#fff}
+.qans .btn{font-size:20px;white-space:nowrap}
+.qresult{text-align:center;font-size:22px;margin-top:12px;min-height:30px}
+
+/* ---------- 결과 ---------- */
+.result{background:#fff;border:3px solid var(--ink);border-radius:24px;padding:22px;box-shadow:0 6px 0 var(--ink);text-align:center}
+.result .t{font-family:'Black Han Sans',sans-serif;font-size:40px;margin:0}
+.result .badge{display:inline-block;background:var(--yellow);border:3px solid var(--ink);border-radius:999px;padding:6px 18px;font-size:22px;margin:10px 0}
+.final{font-family:'Black Han Sans',sans-serif;font-size:64px;color:var(--purple);line-height:1;margin:6px 0 14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}
+.stat{background:var(--sky);border-radius:14px;padding:10px 4px}
+.stat .l{font-size:13px;color:var(--ink2)} .stat .v{font-size:22px}
+.reg{display:flex;gap:8px;max-width:480px;margin:0 auto 14px}
+.reg input{flex:1;min-width:0;font-family:inherit;font-size:20px;padding:12px 14px;border:3px solid var(--ink);border-radius:14px;outline:none}
+.reg input:focus{border-color:var(--blue)}
+#regMsg{min-height:26px;margin-bottom:12px;font-size:17px}
+.mute{position:fixed;right:12px;bottom:12px;width:48px;height:48px;border-radius:50%;background:#fff;border:3px solid var(--ink);font-size:22px;z-index:20}
+@media (max-width:560px){
+  .hud{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .opts{grid-template-columns:1fr}
+  .opts.oxg{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= 시작 화면 ================= -->
+  <section id="home" class="screen on">
+    <div class="logo">
+      <div class="big">빙글빙글<br><span>전동기</span> <span class="spin">⚙️</span></div>
+      <div class="sub">정류자가 되어 전류의 방향을 바꿔라! ⚡</div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-tab="play">🎮 게임 시작하기</button>
+      <button class="tab" data-tab="hof">🏆 명예의 전당</button>
+    </div>
+
+    <div id="panelPlay" class="panel on">
+      <div class="howto">
+        <div class="how"><b>① 코일이 돌아요</b>자석 사이에서 코일을 감은 회전자가 빙글빙글 돌아요. <span class="em">반 바퀴</span>마다 전류 방향을 바꿔야 계속 돌 수 있어요!</div>
+        <div class="how"><b>② 타이밍에 누르기</b>회전자가 자석과 나란한 <span class="em">노란 구역(왼쪽·오른쪽)</span>에 올 때 <span class="key">Enter</span> <span class="key">Space</span> 또는 화면을 터치!</div>
+        <div class="how"><b>③ 퀴즈 찬스 ⚡</b>성공 6번마다 빈칸 퀴즈! 정답을 직접 입력해서 맞히면 <span class="em">FEVER TIME</span> 10초 동안 점수 3배!</div>
+        <div class="how"><b>④ 조심!</b>타이밍을 놓치면 ❤️가 줄어요. 하트 3개가 모두 없어지면 게임 끝!</div>
+      </div>
+      <button id="btnStart" class="btn-big">▶ 게임 시작!</button>
+    </div>
+
+    <div id="panelHof" class="panel">
+      <div class="hof-head">
+        <h2>🏆 명예의 전당</h2>
+        <button class="btn y" id="btnHofRefresh">🔄 새로고침</button>
+      </div>
+      <div class="note" id="hofNote"></div>
+      <ul class="hof-list" id="hofList"></ul>
+    </div>
+  </section>
+
+  <!-- ================= 게임 화면 ================= -->
+  <section id="game" class="screen">
+    <div class="hud">
+      <div class="hbox"><div class="l">점수</div><div class="v" id="hScore">0</div></div>
+      <div class="hbox"><div class="l">콤보</div><div class="v" id="hCombo">0</div></div>
+      <div class="hbox"><div class="l">회전 속도</div><div class="v" id="hRpm">30</div></div>
+      <div class="hbox"><div class="l">생명</div><div class="v" id="hLives">❤️❤️❤️</div></div>
+    </div>
+    <div class="bars">
+      <div class="bar quiz"><i id="quizBar"></i><span id="quizTxt">퀴즈 찬스까지 12</span></div>
+      <div class="bar fev"><i id="fevBar"></i><span id="fevTxt">FEVER 게이지</span></div>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="cv" width="720" height="460"></canvas>
+      <div class="fever-badge">🔥 FEVER TIME ×3 🔥</div>
+      <div class="count" id="count">3</div>
+    </div>
+    <button class="switch-btn" id="btnSwitch">⚡ 전류 바꾸기! (Enter)</button>
+    <div class="tip">회전자가 <b>왼쪽·오른쪽 노란 구역</b>(자석과 나란할 때)에 오면 누르세요. 전류가 바뀌면 <b style="color:#e8232f">빨간 화살표</b>와 회전자의 N·S극이 바뀌어요!</div>
+  </section>
+
+  <!-- ================= 결과 화면 ================= -->
+  <section id="over" class="screen">
+    <div class="result">
+      <p class="t">GAME OVER</p>
+      <div class="badge" id="rTitle">전동기 견습생</div>
+      <div class="final" id="rScore">0</div>
+      <div class="stats">
+        <div class="stat"><div class="l">최대 콤보</div><div class="v" id="rCombo">0</div></div>
+        <div class="stat"><div class="l">PERFECT</div><div class="v" id="rPerfect">0</div></div>
+        <div class="stat"><div class="l">퀴즈 정답</div><div class="v" id="rQuiz">0/0</div></div>
+        <div class="stat"><div class="l">최고 속도</div><div class="v" id="rRpm">0</div></div>
+      </div>
+      <div class="reg">
+        <input id="nameInput" maxlength="12" placeholder="이름 또는 닉네임 (최대 12자)" autocomplete="off">
+        <button class="btn p" id="btnReg">등록</button>
+      </div>
+      <div id="regMsg"></div>
+      <div class="row">
+        <button class="btn g" id="btnAgain">🔁 다시 하기</button>
+        <button class="btn b" id="btnToHof">🏆 명예의 전당</button>
+        <button class="btn" id="btnHome">🏠 처음으로</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 퀴즈 모달 ================= -->
+<div class="modal" id="quiz">
+  <div class="qcard">
+    <div class="qtop"><span class="qtag">⚡ 보너스 퀴즈</span><span class="qsec" id="qSec"></span></div>
+    <div class="qtitle">맞히면 FEVER TIME! 🔥</div>
+    <div class="qtext" id="qText"></div>
+    <div class="qtimer"><i id="qTimer"></i></div>
+    <div class="qans">
+      <input id="qInput" maxlength="20" placeholder="빈칸에 들어갈 말을 입력!" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn p" id="qSubmit">정답 확인</button>
+    </div>
+    <div class="qresult" id="qResult"></div>
+  </div>
+</div>
+
+<button class="mute" id="btnMute" title="소리 켜기/끄기">🔊</button>
+
+<script>
+/* =====================================================================
+   ★ 구글 시트 연동 설정
+   apps-script.gs 를 구글 시트의 Apps Script에 붙여 넣고 [웹 앱]으로 배포한 뒤
+   받은 URL(https://script.google.com/macros/s/..../exec)을 아래 따옴표 안에 넣으세요.
+   비워 두면 이 컴퓨터(브라우저)에만 기록이 저장됩니다.
+   ===================================================================== */
+const SHEET_API_URL = "";
+
+/* =====================================================================
+   퀴즈(단답형): 교사용 활동지 Ⅶ-3. 전류의 자기 작용 (3-1, 3-2) 빈칸
+   ___ 자리가 빈칸으로 표시됩니다.
+   a[0]이 대표 정답이고, 나머지는 함께 인정하는 답입니다. (띄어쓰기는 무시)
+   ===================================================================== */
+const QUIZ = [
+  // 3-1 전류가 만드는 자기장
+  {s:"3-1 전류가 만드는 자기장", q:"자기장: 자석 주위에서 ___이 작용하는 공간", a:["자기력"]},
+  {s:"3-1 전류가 만드는 자기장", q:"자기장의 방향은 나침반 바늘의 ___이 가리키는 방향이다.", a:["N극","N","엔극"]},
+  {s:"3-1 전류가 만드는 자기장", q:"코일 내부의 자기장 방향은 오른손의 네 손가락을 ___의 방향으로 감아쥘 때 엄지손가락이 가리키는 방향이다.", a:["전류"]},
+  {s:"3-1 전류가 만드는 자기장", q:"코일 내부의 자기장 방향은 오른손의 네 손가락을 전류의 방향으로 감아쥘 때 ___이 가리키는 방향이다.", a:["엄지손가락","엄지"]},
+  {s:"3-1 전류가 만드는 자기장", q:"코일 내부의 자기장 방향은 ___의 네 손가락을 전류의 방향으로 감아쥘 때 엄지손가락이 가리키는 방향이다.", a:["오른손"]},
+  {s:"3-1 전류가 만드는 자기장", q:"코일에 흐르는 전류의 방향이 바뀌면 코일 주위 자기장의 방향은 ___로 바뀐다.", a:["반대","반대방향","반대쪽"]},
+  {s:"3-1 전류가 만드는 자기장", q:"코일에 흐르는 전류의 세기가 셀수록 코일 주위 자기장의 세기는 ___진다.", a:["커","커진다","세","강해"]},
+  {s:"3-1 전류가 만드는 자기장", q:"___: 전류가 흐르는 코일 주위에 자기장이 생기는 현상을 이용하여 만든 자석", a:["전자석"]},
+  {s:"3-1 전류가 만드는 자기장", q:"전자석은 코일에 흐르는 전류의 세기와 ___을 조절하여 자석의 세기와 극을 바꿀 수 있다.", a:["방향"]},
+  {s:"3-1 전류가 만드는 자기장", q:"전자석은 코일에 흐르는 전류의 세기와 방향을 조절하여 자석의 세기와 ___을 바꿀 수 있다.", a:["극"]},
+  {s:"3-1 전류가 만드는 자기장", q:"전자석은 코일에 흐르는 전류의 ___와 방향을 조절하여 자석의 세기와 극을 바꿀 수 있다.", a:["세기"]},
+  {s:"3-1 전류가 만드는 자기장", q:"___: 자석과 쇠붙이 사이 또는 자석과 자석 사이에 작용하는 힘", a:["자기력"]},
+  // 3-2 자기장 속에서 코일이 받는 힘
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"___가 흐르는 코일에 자석을 가까이 가져가면 코일이 힘을 받는다.", a:["전류"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"코일이 만드는 ___과 자석이 만드는 자기장이 상호작용 하여 코일이 힘을 받는다.", a:["자기장"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"코일이 만드는 자기장과 자석이 만드는 자기장이 ___ 하여 코일이 힘을 받는다.", a:["상호작용"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"전류가 흐르는 코일과 자석 사이에 서로 밀어 내는 방향이나 ___ 방향으로 힘이 작용한다.", a:["끌어당기는","끌어당김","당기는"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"자기장의 방향이 바뀌거나 코일에 흐르는 ___의 방향이 바뀌면 코일이 받는 힘의 방향도 바뀐다.", a:["전류"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"___의 방향이 바뀌거나 코일에 흐르는 전류의 방향이 바뀌면 코일이 받는 힘의 방향도 바뀐다.", a:["자기장"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"코일이 받는 힘의 크기는 전류의 세기가 셀수록, 자기장의 세기가 셀수록 ___다.", a:["크","크다","커","커진다"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"___: 내부에 있는 코일이 만드는 자기장과 자석이 만드는 자기장이 상호작용 하여 코일이 힘을 받아 회전하는 장치", a:["전동기","모터"]},
+  {s:"3-2 자기장 속에서 코일이 받는 힘", q:"___: 코일이 반 바퀴 회전할 때마다 코일에 흐르는 전류의 방향을 반대로 바꾸어 주는 장치", a:["정류자"]},
+
+  // ⭐ 핵심 개념 (빈칸 외 추가 문항)
+  {s:"⭐ 핵심 개념 · 자기장", q:"자기장의 방향을 알아볼 때 쓰는 도구로, 바늘의 N극이 가리키는 방향이 자기장의 방향이다. 이 도구는 ___이다.", a:["나침반","나침판"]},
+  {s:"⭐ 핵심 개념 · 자기장", q:"자석 주위의 자기장은 자석의 ___극에서 나와 S극으로 들어가는 방향이다.", a:["N","N극","엔"]},
+  {s:"⭐ 핵심 개념 · 자기장", q:"자석의 같은 극끼리는 서로 ___ 힘이 작용한다.", a:["밀어내는","밀어 내는","미는","척력"]},
+  {s:"⭐ 핵심 개념 · 자기장", q:"자석의 다른 극끼리는 서로 ___ 힘이 작용한다.", a:["끌어당기는","당기는","인력"]},
+  {s:"⭐ 핵심 개념 · 자기장", q:"전류가 흐르는 코일 주위의 자기장 모양은 ___자석 주위의 자기장 모양과 비슷하다.", a:["막대","막대자석"]},
+  {s:"⭐ 핵심 개념 · 전자석", q:"전자석은 ___가 흐를 때만 자석이 된다.", a:["전류"]},
+  {s:"⭐ 핵심 개념 · 전자석", q:"전자석은 전선을 ___ 모양으로 감아서 만든다.", a:["코일","원통","나선"]},
+  {s:"⭐ 핵심 개념 · 전자석", q:"전자석의 N극과 S극을 서로 바꾸려면 코일에 흐르는 전류의 ___을 바꾼다.", a:["방향"]},
+  {s:"⭐ 핵심 개념 · 전자석", q:"전자석의 세기를 더 세게 하려면 코일에 흐르는 전류의 세기를 더 ___ 한다.", a:["세게","크게","강하게"]},
+  {s:"⭐ 핵심 개념 · 전자석", q:"고철을 들어 올리는 기중기, 잠금장치, 하드 디스크는 모두 ___을 이용한 장치이다.", a:["전자석"]},
+  {s:"⭐ 핵심 개념 · 코일이 받는 힘", q:"말굽자석 사이에 놓인 알루미늄박에 전류를 흘려 주면 알루미늄박이 ___을 받아 움직인다.", a:["힘","자기력"]},
+  {s:"⭐ 핵심 개념 · 코일이 받는 힘", q:"자기장 속 코일이 받는 힘의 방향을 바꾸려면 전류의 방향을 바꾸거나 자석의 ___을 바꾼다.", a:["극","방향","N극과S극","위치"]},
+  {s:"⭐ 핵심 개념 · 코일이 받는 힘", q:"자기장 속 코일이 받는 힘을 크게 하려면 전류를 더 세게 하거나 더 ___ 자석을 사용한다.", a:["센","강한","세기가센"]},
+  {s:"⭐ 핵심 개념 · 전동기", q:"정류자는 코일이 ___ 바퀴 회전할 때마다 전류의 방향을 반대로 바꾸어 준다.", a:["반","반바퀴","1/2","절반"]},
+  {s:"⭐ 핵심 개념 · 전동기", q:"전동기는 ___ 에너지를 운동 에너지로 바꾸어 회전하는 장치이다.", a:["전기","전기에너지"]},
+  {s:"⭐ 핵심 개념 · 전동기", q:"선풍기, 세탁기, 전기 자동차 속에서 회전 운동을 만들어 내는 장치는 ___이다.", a:["전동기","모터"]},
+  {s:"⭐ 핵심 개념 · 활용", q:"코일과 자석의 상호작용으로 진동판을 떨게 하여 소리를 내는 장치는 ___이다.", a:["스피커","헤드폰","이어폰"]},
+  {s:"⭐ 핵심 개념 · 활용", q:"자석의 힘으로 선로 위에 떠서 달리는 열차는 ___ 열차이다.", a:["자기부상","자기 부상","자기부상열차"]},
+];
+const normAns = s => String(s).toLowerCase().replace(/[\s.,!?~'"()]/g,'');
+
+/* ===================== 게임 상수 ===================== */
+const CFG = {
+  lives:3,
+  startRps:0.5, maxRps:1.5, rpsStep:0.04, hitsPerSpeedUp:6,
+  perfect:0.045, great:0.09, goodMax:0.15,  // 시작 판정 범위(초)
+  perfectMin:0.016, greatMin:0.035, goodMin:0.055, // 점수가 올라가면 여기까지 좁아짐
+  tightenEvery:5000,                         // 이 점수마다 판정이 한 단계씩 엄격해짐
+  quizEvery:6, quizTime:20, feverTime:10, feverMult:3,
+};
+// 점수가 오를수록 PERFECT / GREAT 범위가 줄어듦
+function tier(){ return Math.floor(G.score / CFG.tightenEvery); }
+function perfectWin(){ return Math.max(CFG.perfectMin, CFG.perfect * Math.pow(0.85, tier())); }
+function greatWin(){ return Math.max(CFG.greatMin, CFG.great * Math.pow(0.87, tier())); }
+
+/* ===================== 유틸 ===================== */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id)); window.scrollTo(0,0); }
+
+/* ===================== 사운드 ===================== */
+let AC=null, muted = store.get('motor_muted', false);
+$('btnMute').textContent = muted ? '🔇' : '🔊';
+function beep(freq, dur=0.08, type='square', vol=0.08, slide=0){
+  if(muted) return;
+  try{
+    if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide), t+dur);
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const SFX = {
+  perfect(){ beep(988,.07,'square',.07); setTimeout(()=>beep(1319,.09,'square',.07),45); },
+  great(){ beep(880,.08,'square',.06); },
+  good(){ beep(660,.08,'triangle',.08); },
+  miss(){ beep(220,.25,'sawtooth',.07,-120); },
+  early(){ beep(330,.06,'triangle',.06); },
+  quiz(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.1,'square',.06),i*80)); },
+  right(){ [784,988,1175,1568].forEach((f,i)=>setTimeout(()=>beep(f,.12,'square',.07),i*70)); },
+  wrong(){ beep(300,.18,'sawtooth',.06,-80); setTimeout(()=>beep(200,.25,'sawtooth',.06,-60),160); },
+  count(){ beep(600,.1,'triangle',.09); },
+  go(){ beep(1200,.18,'triangle',.09); },
+};
+$('btnMute').onclick = ()=>{ muted=!muted; store.set('motor_muted',muted); $('btnMute').textContent = muted?'🔇':'🔊'; };
+
+/* ===================== 탭 ===================== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on', x===t));
+  $('panelPlay').classList.toggle('on', t.dataset.tab==='play');
+  $('panelHof').classList.toggle('on', t.dataset.tab==='hof');
+  if(t.dataset.tab==='hof') loadHof();
+});
+
+/* ===================== 게임 상태 ===================== */
+const cv=$('cv'), ctx=cv.getContext('2d');
+const W=720, H=460, CX=360, CY=215, R=128;
+(function setupDPR(){
+  const d = Math.min(2, window.devicePixelRatio||1);
+  cv.width=W*d; cv.height=H*d; ctx.setTransform(d,0,0,d,0,0);
+})();
+
+let G = null, raf = 0, lastT = 0, quizDeck = [];
+const sw = k => 45 + 180*k;   // 전류를 바꿔야 하는 시점: 회전자가 자석과 나란할 때(rotorAlpha = 0°, 180°)
+
+function newGame(){
+  G = {
+    state:'count', theta:-105, rps:CFG.startRps, speedMul:1, cur:1, k:0,
+    score:0, combo:0, maxCombo:0, lives:CFG.lives, hits:0, perfects:0, sinceQuiz:0,
+    quizAsked:0, quizRight:0, feverLeft:0, maxRps:CFG.startRps,
+    pops:[], parts:[], flash:0, brushFlash:0, countT:3.0, pendingQuiz:false, lastCount:4,
+  };
+  document.body.classList.remove('fever');
+  show('game'); updateHud();
+  $('count').classList.add('on');
+  cancelAnimationFrame(raf); lastT = performance.now(); raf = requestAnimationFrame(loop);
+}
+
+// GOOD 범위(이 밖이면 MISS): 점수가 오를수록 줄어들어 게임오버가 쉬워짐
+function goodWin(){
+  const half = 1/(2*G.rps);
+  const shrink = Math.max(CFG.goodMin, CFG.goodMax * Math.pow(0.88, tier()));
+  return Math.max(greatWin()+0.01, Math.min(shrink, half*0.45));
+}
+function omega(){ return G.rps*360*G.speedMul; }  // 도/초
+
+function loop(now){
+  const dt = Math.min(0.05, (now-lastT)/1000); lastT = now;
+  if(G.state==='count'){
+    G.countT -= dt;
+    const n = Math.ceil(G.countT);
+    if(n!==G.lastCount){ G.lastCount=n; if(n>0){ $('count').textContent=n; SFX.count(); } }
+    if(G.countT<=0){ $('count').textContent='GO!'; SFX.go(); setTimeout(()=>$('count').classList.remove('on'),400); G.state='play'; }
+  } else if(G.state==='play'){
+    step(dt);
+  }
+  // 이펙트
+  G.pops.forEach(p=>{ p.t+=dt; p.y-=40*dt; }); G.pops = G.pops.filter(p=>p.t<0.8);
+  G.parts.forEach(p=>{ p.t+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=300*dt; }); G.parts = G.parts.filter(p=>p.t<0.7);
+  G.flash = Math.max(0,G.flash-dt*3); G.brushFlash = Math.max(0,G.brushFlash-dt*4);
+  draw();
+  if(G.state!=='over') raf = requestAnimationFrame(loop);
+}
+
+function step(dt){
+  // 미스 후 속도 회복
+  G.speedMul += (1-G.speedMul)*Math.min(1,dt*2.2);
+  G.theta += omega()*dt;
+  // 피버
+  if(G.feverLeft>0){
+    G.feverLeft -= dt;
+    if(G.feverLeft<=0){ G.feverLeft=0; document.body.classList.remove('fever'); addPop('FEVER 끝!', '#8b5cf6'); }
+  }
+  // 놓침 판정
+  const late = (G.theta - sw(G.k)) / (G.rps*360);
+  if(late > goodWin()) judgeMiss('MISS');
+  updateBars();
+  if(G.pendingQuiz && G.feverLeft<=0){ G.pendingQuiz=false; openQuiz(); }
+}
+
+function press(){
+  if(!G || G.state!=='play') return;
+  const dtSec = (sw(G.k) - G.theta) / (G.rps*360);   // +: 이른, -: 늦은
+  const a = Math.abs(dtSec);
+  if(a > goodWin()){
+    if(dtSec>0){ // 너무 이름
+      G.combo=0; addPop('너무 빨라요!', '#3a86ff'); SFX.early(); updateHud();
+    }
+    return;
+  }
+  let label, base, color;
+  const tierBefore = tier();
+  if(a<=perfectWin()){ label='PERFECT!'; base=300; color='#ff6fa8'; G.perfects++; SFX.perfect(); burst(18); }
+  else if(a<=greatWin()){ label='GREAT!'; base=200; color='#3ddc97'; SFX.great(); burst(9); }
+  else { label='GOOD'; base=100; color='#3a86ff'; SFX.good(); }
+  G.cur *= -1; G.k++; G.brushFlash = 1;
+  G.combo++; G.maxCombo=Math.max(G.maxCombo,G.combo); G.hits++;
+  const mult = (1 + Math.min(G.combo,50)/50) * (G.feverLeft>0 ? CFG.feverMult : 1);
+  const gain = Math.round(base*mult);
+  G.score += gain;
+  addPop(label+' +'+gain, color);
+  if(tier()>tierBefore && perfectWin()>CFG.perfectMin) addPop('판정이 더 엄격해져요! 🎯', '#8b5cf6', 0.3);
+  if(G.hits % CFG.hitsPerSpeedUp === 0 && G.rps < CFG.maxRps){
+    G.rps = Math.min(CFG.maxRps, +(G.rps+CFG.rpsStep).toFixed(3)); G.maxRps = Math.max(G.maxRps,G.rps);
+    addPop('SPEED UP ⏫', '#ff9f1c', 0.25);
+  }
+  if(G.feverLeft<=0){ G.sinceQuiz++; if(G.sinceQuiz>=CFG.quizEvery){ G.sinceQuiz=0; G.pendingQuiz=true; } }
+  updateHud();
+}
+
+function judgeMiss(){
+  G.cur *= -1; G.k++;           // 정류자가 늦게라도 전류를 바꿈
+  G.combo = 0; G.speedMul = 0.35;
+  if(G.feverLeft>0){ addPop('MISS (피버 보호!)', '#8b5cf6'); SFX.early(); updateHud(); return; }
+  G.lives--; SFX.miss(); G.flash = 1;
+  addPop('MISS! 덜컹!', '#ff4d5e');
+  const st=$('stage'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
+  updateHud();
+  if(G.lives<=0) endGame();
+}
+
+/* ===================== 퀴즈 ===================== */
+let qTimerId=0, qState=null;
+// 완전 랜덤 출제 + 최근에 나온 문제(새로고침해도 기억)는 잠시 제외
+function pickQuiz(){
+  const AVOID = Math.min(15, Math.floor(QUIZ.length/2));
+  let recent = store.get('motor_recent_q', []);
+  if(!Array.isArray(recent)) recent = [];
+  const pool = QUIZ.map((_,i)=>i).filter(i=>!recent.includes(i));
+  const idx = (pool.length ? pool : QUIZ.map((_,i)=>i))[Math.floor(Math.random()*(pool.length||QUIZ.length))];
+  recent.push(idx); store.set('motor_recent_q', recent.slice(-AVOID));
+  return QUIZ[idx];
+}
+function openQuiz(){
+  G.state='quiz'; SFX.quiz();
+  const item = pickQuiz();
+  qState = {item, answer:item.a[0], done:false};
+  G.quizAsked++;
+  $('qSec').textContent = item.s;
+  $('qText').innerHTML = esc(item.q).replace('___','<span class="blank">?</span>');
+  const inp = $('qInput'); inp.value=''; inp.disabled=false; inp.classList.remove('right','wrong');
+  $('qSubmit').disabled=false;
+  $('qResult').textContent='';
+  $('quiz').classList.add('on');
+  setTimeout(()=>inp.focus(), 50);
+  const t0=performance.now();
+  clearInterval(qTimerId);
+  qTimerId=setInterval(()=>{
+    const left = CFG.quizTime - (performance.now()-t0)/1000;
+    $('qTimer').style.width = Math.max(0,left/CFG.quizTime*100)+'%';
+    $('qTimer').style.background = left<4 ? 'var(--red)' : 'var(--mint)';
+    if(left<=0) answerQuiz(null);
+  },50);
+}
+function submitQuiz(){
+  if(!qState || qState.done) return;
+  const v=$('qInput').value.trim();
+  if(!v){ $('qInput').focus(); return; }
+  answerQuiz(v);
+}
+$('qSubmit').onclick = submitQuiz;
+let submitAfterCompose = false;
+$('qInput').addEventListener('compositionend', ()=>{ if(submitAfterCompose){ submitAfterCompose=false; setTimeout(submitQuiz, 0); } });
+$('qInput').addEventListener('input', e=>{ if(!e.isComposing) submitAfterCompose=false; });
+function answerQuiz(v){
+  if(!qState || qState.done) return;
+  qState.done=true; clearInterval(qTimerId);
+  const ok = v!==null && qState.item.a.some(x=>normAns(x)===normAns(v));
+  const inp=$('qInput'); inp.disabled=true; $('qSubmit').disabled=true; inp.blur();
+  inp.classList.add(ok?'right':'wrong');
+  const full = qState.item.q.replace('___', '「'+qState.answer+'」');
+  if(ok){
+    G.quizRight++; G.score += 500; SFX.right();
+    $('qResult').innerHTML = '🎉 정답! +500점 & <b style="color:#ff6fa8">FEVER TIME!</b>';
+  } else {
+    SFX.wrong();
+    $('qResult').innerHTML = (v===null?'⏰ 시간 초과! ':'😢 아쉬워요! ') + '정답은 <b style="color:#3ddc97">'+esc(qState.answer)+'</b>' + (full?'<div style="font-size:16px;color:#5b6b86;margin-top:4px">'+esc(full)+'</div>':'');
+  }
+  setTimeout(()=>{
+    $('quiz').classList.remove('on');
+    resumeAfterQuiz(ok);
+  }, ok?1300:2600);
+}
+function resumeAfterQuiz(fever){
+  // 코일을 다음 스위칭 지점 120° 앞으로 맞춰 다시 시작
+  G.theta = sw(G.k) - 120;
+  G.cur = Math.sin(rotorAlpha()*Math.PI/180)>=0 ? 1 : -1;
+  G.speedMul = 1;
+  if(fever){ G.feverLeft = CFG.feverTime; document.body.classList.add('fever'); addPop('🔥 FEVER ×3 🔥','#ff6fa8'); }
+  G.state='count'; G.countT=1.5; G.lastCount=4;
+  $('count').textContent='READY'; $('count').classList.add('on');
+  updateHud(); lastT = performance.now();
+}
+
+/* ===================== HUD ===================== */
+function updateHud(){
+  $('hScore').textContent = G.score.toLocaleString();
+  $('hCombo').textContent = G.combo;
+  $('hRpm').textContent = Math.round(G.rps*60);
+  $('hLives').textContent = '❤️'.repeat(Math.max(0,G.lives)) + '🤍'.repeat(Math.max(0,CFG.lives-G.lives));
+  updateBars();
+}
+function updateBars(){
+  if(G.feverLeft>0){
+    $('quizBar').style.width='100%'; $('quizTxt').textContent='퀴즈 대기 중 🔥';
+    $('fevBar').style.width = (G.feverLeft/CFG.feverTime*100)+'%';
+    $('fevTxt').textContent = 'FEVER '+G.feverLeft.toFixed(1)+'초';
+  } else {
+    $('quizBar').style.width = (G.sinceQuiz/CFG.quizEvery*100)+'%';
+    $('quizTxt').textContent = G.pendingQuiz ? '⚡ 퀴즈 찬스!' : '퀴즈 찬스까지 '+(CFG.quizEvery-G.sinceQuiz);
+    $('fevBar').style.width='0%'; $('fevTxt').textContent='퀴즈를 맞히면 FEVER!';
+  }
+}
+
+/* ===================== 이펙트 ===================== */
+function addPop(text,color,delay=0){ G.pops.push({text,color,t:-delay,x:CX,y:52}); }
+function rotorAlpha(){ return 45 - G.theta; }           // 회전자 A쪽 끝의 방향(수학 각도, 시계 방향으로 회전)
+function burst(n){
+  const a = rotorAlpha()*Math.PI/180, L=ROT_L;
+  const pts=[[CX+L*Math.cos(a), CY-L*Math.sin(a)],[CX-L*Math.cos(a), CY+L*Math.sin(a)]];
+  const cols=['#ffd23f','#ff6fa8','#3ddc97','#3a86ff','#8b5cf6'];
+  pts.forEach(([x,y])=>{ for(let i=0;i<n;i++){ const ang=Math.random()*Math.PI*2, sp=80+Math.random()*180;
+    G.parts.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp-60,t:0,c:cols[i%cols.length]}); } });
+}
+
+/* ===================== 그리기 (교과서 전동기 그림 형태) ===================== */
+const ROT_L = 150;   // 회전자 반 길이
+const GAP_R = 188;   // 자석 안쪽 곡면 반지름
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function arrow(x1,y1,x2,y2,color,w=6,head=14){
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=w; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-Math.cos(a)*head*.6,y2-Math.sin(a)*head*.6); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-head*Math.cos(a-0.45),y2-head*Math.sin(a-0.45));
+  ctx.lineTo(x2-head*Math.cos(a+0.45),y2-head*Math.sin(a+0.45)); ctx.closePath(); ctx.fill();
+}
+// 화면 각도(도) 기준 곡선 화살표
+function arcArrow(r, fromDeg, toDeg, color){
+  const f=fromDeg*Math.PI/180, t=toDeg*Math.PI/180;
+  ctx.strokeStyle=color; ctx.lineWidth=9; ctx.lineCap='round';
+  ctx.beginPath(); ctx.arc(CX,CY,r,f,t,t<f); ctx.stroke();
+  const dir = t>f ? 1 : -1;
+  const hx=CX+r*Math.cos(t), hy=CY+r*Math.sin(t);
+  const tx=-Math.sin(t)*dir, ty=Math.cos(t)*dir;  // 진행 방향 접선
+  const nx=Math.cos(t), ny=Math.sin(t);
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(hx+tx*20, hy+ty*20);
+  ctx.lineTo(hx+nx*13, hy+ny*13);
+  ctx.lineTo(hx-nx*13, hy-ny*13);
+  ctx.closePath(); ctx.fill();
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const fever = G.feverLeft>0, time=performance.now()/1000;
+  ctx.fillStyle='#efedea'; ctx.fillRect(0,0,W,H);
+
+  // ── 바깥 영구 자석 (N: 왼쪽 빨강, S: 오른쪽 파랑) ──
+  const mTop=20, mBot=CY+GAP_R+20;
+  let g=ctx.createLinearGradient(20,0,CX-90,0); g.addColorStop(0,'#ee2f3c'); g.addColorStop(1,'#b5202c');
+  ctx.fillStyle=g; ctx.fillRect(20,mTop,CX-100-20,mBot-mTop);
+  g=ctx.createLinearGradient(CX+90,0,W-20,0); g.addColorStop(0,'#0d4f97'); g.addColorStop(1,'#1f8bd1');
+  ctx.fillStyle=g; ctx.fillRect(CX+100,mTop,W-20-(CX+100),mBot-mTop);
+  // 안쪽 곡면
+  ctx.beginPath(); ctx.arc(CX,CY,GAP_R,0,Math.PI*2); ctx.fillStyle='#efedea'; ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='64px "Black Han Sans"'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('N',70,CY+10); ctx.fillText('S',W-70,CY+10);
+  ctx.textBaseline='alphabetic';
+
+  // ── 타이밍 구역: 회전자가 자석과 나란해지는 곳(왼쪽·오른쪽) ──
+  const hw = Math.min(40, (G.rps*360)*goodWin());
+  const pw = (G.rps*360)*perfectWin();
+  const pulse = 0.55+0.45*Math.sin(time*10);
+  [0,180].forEach(sa=>{
+    ctx.lineCap='butt';
+    ctx.beginPath(); ctx.arc(CX,CY,ROT_L+10,(sa-hw)*Math.PI/180,(sa+hw)*Math.PI/180);
+    ctx.strokeStyle=`rgba(255,210,63,${0.5+0.35*pulse})`; ctx.lineWidth=40; ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,CY,ROT_L+10,(sa-pw)*Math.PI/180,(sa+pw)*Math.PI/180);
+    ctx.strokeStyle='rgba(255,111,168,.85)'; ctx.lineWidth=40; ctx.stroke();
+  });
+
+  // ── 회전 방향 (보라색, 시계 방향) ──
+  arcArrow(GAP_R-20, 205, 250, '#7b3fb0');   // 왼쪽: 위로
+  arcArrow(GAP_R-20, 25, 70, '#7b3fb0');     // 오른쪽: 아래로
+
+  // ── 회전자 (전자석) ──
+  const al = rotorAlpha(), a = al*Math.PI/180;
+  const sinA = Math.sin(a);
+  const ideal = Math.abs(sinA)>0.18 ? (sinA>0?1:-1) : 0;   // A쪽이 위에 있을 때 A가 N극이어야 시계 방향으로 회전
+  const okDir = ideal===0 || ideal===G.cur;
+  ctx.save(); ctx.translate(CX,CY); ctx.rotate(-a);
+  if(!okDir){ ctx.shadowColor='rgba(255,77,94,.9)'; ctx.shadowBlur=30; }
+  // 철심
+  g=ctx.createLinearGradient(0,-34,0,34); g.addColorStop(0,'#9a9fa6'); g.addColorStop(.45,'#e4e6e9'); g.addColorStop(1,'#80858c');
+  ctx.fillStyle=g; rr(-ROT_L,-34,ROT_L*2,68,6); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#5d6168'; ctx.lineWidth=2; ctx.stroke();
+  // 코일 연결 도선(고리)
+  ctx.strokeStyle= fever ? '#ff6fa8' : '#c8742a'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.ellipse(0,0,78,46,0,0,Math.PI*2); ctx.stroke();
+  // 코일 두 묶음
+  [[-ROT_L+18,-40],[40,ROT_L-18]].forEach(([x1,x2])=>{
+    g=ctx.createLinearGradient(0,-50,0,50); g.addColorStop(0,'#b0611f'); g.addColorStop(.4,'#f0a35a'); g.addColorStop(1,'#9b521a');
+    ctx.fillStyle = fever ? '#ff9cc6' : g; rr(x1,-50,x2-x1,100,14); ctx.fill();
+    ctx.strokeStyle='rgba(110,55,15,.75)'; ctx.lineWidth=2;
+    for(let x=x1+5;x<x2-2;x+=7){ ctx.beginPath(); ctx.moveTo(x,-48); ctx.lineTo(x+3,48); ctx.stroke(); }
+    // 전류 방향 (빨간 화살표)
+    const mx=(x1+x2)/2;
+    arrow(mx-8, -30*G.cur, mx+8, 30*G.cur, '#e8232f', 8, 20);
+  });
+  // 정류자 (축 방향에 틈이 있는 반원 두 개)
+  ctx.lineCap='butt'; ctx.lineWidth=12;
+  [[20,160],[200,340]].forEach(([s,e])=>{
+    ctx.beginPath(); ctx.arc(0,0,30,s*Math.PI/180,e*Math.PI/180);
+    ctx.strokeStyle = G.brushFlash>0 ? '#ffe9a8' : '#d9dde3'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,30,s*Math.PI/180,e*Math.PI/180);
+    ctx.strokeStyle='rgba(90,95,105,.6)'; ctx.lineWidth=1.5; ctx.stroke(); ctx.lineWidth=12;
+  });
+  ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.strokeStyle='#888'; ctx.lineWidth=2; ctx.stroke();
+  ctx.restore();
+
+  // 회전자 양 끝의 극 표시 (전류 방향에 따라 바뀜)
+  [[1,G.cur>0?'N':'S'],[-1,G.cur>0?'S':'N']].forEach(([s,p])=>{
+    const x=CX+s*(ROT_L+30)*Math.cos(a), y=CY-s*(ROT_L+30)*Math.sin(a);
+    ctx.font='34px "Black Han Sans"'; ctx.textBaseline='middle';
+    ctx.lineWidth=7; ctx.strokeStyle='#fff'; ctx.strokeText(p,x,y);
+    ctx.fillStyle = p==='N' ? '#e0202e' : '#1565c0'; ctx.fillText(p,x,y);
+    ctx.textBaseline='alphabetic';
+  });
+
+  // ── 도선과 브러시 ──
+  const bot=H-36, wl=CX-80, wr=CX+80;
+  ctx.strokeStyle = G.brushFlash>0 ? '#ffb000' : '#1d1d1f'; ctx.lineWidth=5; ctx.lineCap='square';
+  ctx.beginPath(); ctx.moveTo(CX-44,CY); ctx.lineTo(wl,CY); ctx.lineTo(wl,bot); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX+44,CY); ctx.lineTo(wr,CY); ctx.lineTo(wr,bot); ctx.stroke();
+  ctx.fillStyle = G.brushFlash>0 ? '#ffd23f' : '#a8adb5';
+  rr(CX-50,CY-10,14,20,3); ctx.fill(); rr(CX+36,CY-10,14,20,3); ctx.fill();
+  ctx.strokeStyle='#5d6168'; ctx.lineWidth=2; rr(CX-50,CY-10,14,20,3); ctx.stroke(); rr(CX+36,CY-10,14,20,3); ctx.stroke();
+  ctx.fillStyle='#1d1d1f'; ctx.font='24px Jua'; ctx.textAlign='center';
+  ctx.fillText('(+)',wl,H-8); ctx.fillText('(−)',wr,H-8);
+
+  // ── 안내 문구 ──
+  ctx.font='16px Jua'; ctx.textAlign='left'; ctx.fillStyle='#e8232f';
+  ctx.fillText('➜ 빨간 화살표: 전류 방향', 24, H-12);
+  ctx.textAlign='right'; ctx.fillStyle = okDir ? '#119b5c' : '#e0202e';
+  ctx.fillText(okDir ? '끌려가며 회전 중 ✔' : '극이 반대! 빨리 바꿔요', W-24, H-12);
+  ctx.textAlign='center';
+
+  // 파티클 & 팝업
+  G.parts.forEach(p=>{ ctx.globalAlpha=Math.max(0,1-p.t/0.7); ctx.fillStyle=p.c; ctx.fillRect(p.x-4,p.y-4,8,8); });
+  ctx.globalAlpha=1;
+  G.pops.forEach(p=>{
+    if(p.t<0) return;
+    const al2=Math.max(0,1-p.t/0.8), sc=1+Math.max(0,0.25-p.t)*1.6;
+    ctx.globalAlpha=al2; ctx.font=`${Math.round(30*sc)}px "Black Han Sans"`;
+    ctx.lineWidth=6; ctx.strokeStyle='#fff'; ctx.strokeText(p.text,p.x,p.y+40);
+    ctx.fillStyle=p.color; ctx.fillText(p.text,p.x,p.y+40);
+  });
+  ctx.globalAlpha=1;
+  if(G.flash>0){ ctx.fillStyle=`rgba(255,77,94,${G.flash*0.25})`; ctx.fillRect(0,0,W,H); }
+}
+
+/* ===================== 게임 종료 ===================== */
+let lastResult=null, myEntry=null;
+function endGame(){
+  G.state='over'; cancelAnimationFrame(raf);
+  document.body.classList.remove('fever');
+  draw();
+  lastResult = {score:G.score, combo:G.maxCombo, perfect:G.perfects, quiz:G.quizRight, quizAsked:G.quizAsked, rpm:Math.round(G.maxRps*60)};
+  setTimeout(()=>{
+    $('rScore').textContent = G.score.toLocaleString();
+    $('rCombo').textContent = G.maxCombo;
+    $('rPerfect').textContent = G.perfects;
+    $('rQuiz').textContent = G.quizRight+'/'+G.quizAsked;
+    $('rRpm').textContent = Math.round(G.maxRps*60);
+    $('rTitle').textContent = titleFor(G.score);
+    $('regMsg').textContent=''; $('btnReg').disabled=false;
+    $('nameInput').value = store.get('motor_name','');
+    show('over');
+  }, 700);
+}
+function titleFor(s){
+  if(s>=60000) return '👑 전설의 전동기 장인';
+  if(s>=35000) return '🧲 자기장 마스터';
+  if(s>=20000) return '⚡ 정류자 달인';
+  if(s>=10000) return '🔧 전동기 기술자';
+  if(s>=4000)  return '🔋 전류 탐험가';
+  return '🌱 전동기 견습생';
+}
+
+/* ===================== 명예의 전당 ===================== */
+function cleanName(s){ return String(s||'').replace(/[<>\n\r\t]/g,'').replace(/^[=+\-@\s]+/,'').trim().slice(0,12); }
+async function submitScore(){
+  if(!lastResult) return;
+  const name = cleanName($('nameInput').value);
+  if(!name){ $('regMsg').innerHTML='<span style="color:#ff4d5e">이름을 입력해 주세요!</span>'; $('nameInput').focus(); return; }
+  store.set('motor_name', name);
+  $('btnReg').disabled=true;
+  const entry = {name, score:lastResult.score, combo:lastResult.combo, quiz:lastResult.quiz, date:new Date().toISOString()};
+  myEntry = entry;
+  if(!SHEET_API_URL){
+    const list = store.get('motor_local_hof', []); list.push(entry);
+    list.sort((a,b)=>b.score-a.score); store.set('motor_local_hof', list.slice(0,100));
+    const rank = list.indexOf(entry)+1;
+    $('regMsg').innerHTML = '✅ 등록 완료! <b>'+rank+'위</b> (이 컴퓨터에만 저장됨)';
+    return;
+  }
+  $('regMsg').textContent='⏳ 명예의 전당에 등록하는 중...';
+  try{
+    const res = await fetch(SHEET_API_URL, {method:'POST', body:JSON.stringify(entry)});
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error||'fail');
+    $('regMsg').innerHTML = '🎉 등록 완료! 현재 <b style="color:#ff6fa8">'+data.rank+'위</b>예요!';
+  }catch(e){
+    $('btnReg').disabled=false;
+    $('regMsg').innerHTML='<span style="color:#ff4d5e">등록 실패 😢 인터넷 연결을 확인하고 다시 눌러 주세요.</span>';
+  }
+}
+async function loadHof(){
+  const ul=$('hofList');
+  ul.innerHTML='<li class="empty" style="display:block">⏳ 불러오는 중...</li>';
+  let list=[];
+  if(!SHEET_API_URL){
+    $('hofNote').textContent='※ 아직 구글 시트가 연결되지 않아 이 컴퓨터의 기록만 보여요.';
+    list = store.get('motor_local_hof', []);
+  } else {
+    $('hofNote').textContent='';
+    try{
+      const res = await fetch(SHEET_API_URL+'?limit=30&t='+Date.now());
+      const data = await res.json();
+      list = data.rows||[];
+    }catch(e){
+      ul.innerHTML='<li class="empty" style="display:block">불러오기 실패 😢 잠시 후 새로고침을 눌러 주세요.</li>'; return;
+    }
+  }
+  list = list.slice().sort((a,b)=>b.score-a.score).slice(0,30);
+  if(list.length===0){ ul.innerHTML='<li class="empty" style="display:block">아직 기록이 없어요. 첫 번째 주인공이 되어 보세요! 🚀</li>'; return; }
+  const medal=['🥇','🥈','🥉'];
+  ul.innerHTML = list.map((r,i)=>{
+    const me = myEntry && r.name===myEntry.name && Number(r.score)===myEntry.score;
+    const d = r.date ? new Date(r.date) : null;
+    const ds = d && !isNaN(d) ? (d.getMonth()+1)+'/'+d.getDate() : '';
+    return `<li class="${i<3?'top'+(i+1):''} ${me?'me':''}">
+      <div class="rank">${i<3?medal[i]:(i+1)}</div>
+      <div class="hname">${esc(r.name)}<small>최대 콤보 ${Number(r.combo)||0} · 퀴즈 ${Number(r.quiz)||0}개 ${ds?'· '+ds:''}</small></div>
+      <div class="hscore">${(Number(r.score)||0).toLocaleString()}</div></li>`;
+  }).join('');
+}
+
+/* ===================== 입력 ===================== */
+document.addEventListener('keydown', e=>{
+  if($('quiz').classList.contains('on')){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(e.isComposing || e.keyCode===229) submitAfterCompose = true;   // 한글 조합 중이면 조합이 끝난 뒤 제출
+      else if(!e.repeat) submitQuiz();
+    }
+    return;
+  }
+  if($('game').classList.contains('on') && (e.key==='Enter' || e.key===' ' || e.code==='Space')){
+    e.preventDefault(); if(e.repeat) return;
+    $('btnSwitch').classList.add('press'); press();
+  }
+  if($('over').classList.contains('on') && e.key==='Enter' && document.activeElement===$('nameInput')){ submitScore(); }
+});
+document.addEventListener('keyup', e=>{ if(e.key==='Enter'||e.key===' ') $('btnSwitch').classList.remove('press'); });
+$('btnSwitch').addEventListener('pointerdown', e=>{ e.preventDefault(); press(); });
+cv.addEventListener('pointerdown', e=>{ e.preventDefault(); press(); });
+$('btnSwitch').addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') e.preventDefault(); });
+
+$('btnStart').onclick = ()=>{ $('btnStart').blur(); newGame(); };
+$('btnAgain').onclick = ()=>{ $('btnAgain').blur(); newGame(); };
+$('btnHome').onclick = ()=>{ show('home'); };
+$('btnToHof').onclick = ()=>{ show('home'); document.querySelector('.tab[data-tab="hof"]').click(); };
+$('btnReg').onclick = submitScore;
+$('btnHofRefresh').onclick = loadHof;
+</script>
+</body>
+</html>
