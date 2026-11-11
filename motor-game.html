@@ -461,9 +461,8 @@ function press(){
   const dtSec = (sw(G.k) - G.theta) / (G.rps*360);   // +: 이른, -: 늦은
   const a = Math.abs(dtSec);
   if(a > goodWin()){
-    if(dtSec>0){ // 너무 이름
-      G.combo=0; addPop('너무 빨라요!', '#3a86ff'); SFX.early(); updateHud();
-    }
+    // 판정 구역에 들어오기 전에 누르면 MISS (연타 방지): 생명 -1, 이번 전환 기회도 사용됨
+    if(dtSec>0) judgeMiss('너무 빨라요! MISS');
     return;
   }
   let label, base, color;
@@ -486,12 +485,12 @@ function press(){
   updateHud();
 }
 
-function judgeMiss(){
+function judgeMiss(label){
   G.cur *= -1; G.k++;           // 정류자가 늦게라도 전류를 바꿈
   G.combo = 0; G.speedMul = 0.35;
   if(G.feverLeft>0){ addPop('MISS (피버 보호!)', '#8b5cf6'); SFX.early(); updateHud(); return; }
   G.lives--; SFX.miss(); G.flash = 1;
-  addPop('MISS! 덜컹!', '#ff4d5e');
+  addPop(label && label!=='MISS' ? label : 'MISS! 덜컹!', '#ff4d5e');
   const st=$('stage'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
   updateHud();
   if(G.lives<=0) endGame();
